@@ -16,6 +16,8 @@ from users.models import (
     BloodPressure,
     HbA1c,
     CustomUser,
+    PillAlarm,
+    HospitalAlarm,
 )
 from .forms import (
     CustomUserCreationForm,
@@ -27,6 +29,8 @@ from .forms import (
     ExerciseForm,
     DietForm,
     MyPageReviseForm,
+    PillAlarmForm,
+    HospitalAlarmForm,
 )
 from datetime import datetime
 
@@ -93,6 +97,16 @@ def logout_view(request):
 
 
 # TODO: change password
+def change_password(request):
+    user = request.user
+    if request.method == "POST":
+        form = CustomUserCreationForm(request.POST, instance=user)
+        if form.is_valid():
+            form.save()
+            return redirect("index")
+    else:
+        form = CustomUserCreationForm(instance=user)
+    return render(request, "users/change_password.html", {"form": form})
 
 
 #
@@ -108,6 +122,10 @@ def load_content(request, menu):
             context["meals"] = meals
         case "exercise":
             context["exercises"] = Exercise.objects.filter(user=request.user)
+            context["total_calories"] = sum(
+                # [exercise.calories for exercise in context["exercises"]]
+                [100, 20]  # TODO: change to real data
+            )
         case "blood":
             # get all blood related data(blood sugar, blood pressure, hba1c) and align all in one list
 
@@ -143,6 +161,23 @@ def load_content(request, menu):
             context["health_conditions"] = [
                 conversion_table[condition] for condition in health_conditions
             ]
+            weekday_conversion_table = {
+                "mon": "월",
+                "tue": "화",
+                "wed": "수",
+                "thu": "목",
+                "fri": "금",
+                "sat": "토",
+                "sun": "일",
+            }
+            alarm_object = PillAlarm.objects.filter(user=request.user)
+            for alarm in alarm_object:
+                alarm.weekday = [
+                    weekday_conversion_table[day] for day in alarm.weekday.split(",")
+                ]
+            context["pill_alarm"] = alarm_object
+            context["hospital_alarm"] = HospitalAlarm.objects.filter(user=request.user)
+            context["weekdays"] = ["월", "화", "수", "목", "금", "토"]
         case _:
             pass
 
@@ -457,7 +492,6 @@ def get_chart_data(request, chart_type, detail_type):
     match (chart_type, detail_type):
         case "option1", detail_type:
             blood_sugar = BloodSugar.objects.filter(user=request.user, time=detail_type)
-            print(blood_sugar)
             labels = [datetime.strftime(data.date, "%Y%m%d") for data in blood_sugar]
             data = [data.blood_sugar for data in blood_sugar]
         case "option2", detail_type:
@@ -492,11 +526,57 @@ def get_chart_data(request, chart_type, detail_type):
 
 
 @login_required
+def food_detail(request, id):
+    meal = get_object_or_404(Diet, pk=id)
+    meal.result_names_list = meal.result.result_names_comma_separated.split(",")
+    return render(request, "users/food_detail.html", {"meal": meal})
+
+
+@login_required
+def pill_alarm(request, id=None):
+    if id:
+        alarm = get_object_or_404(PillAlarm, pk=id)
+    else:
+        alarm = PillAlarm(user=request.user)
+
+    if request.method == "POST":
+        form = PillAlarmForm(request.POST, instance=alarm)
+        if form.is_valid():
+            alarm = form.save(commit=False)
+            alarm.user = request.user
+            alarm.save()
+            return redirect("index")
+    else:
+        form = PillAlarmForm(instance=alarm)
+
+    return render(request, "users/pill_alarm.html", {"form": form})
+
+
+@login_required
+def hospital_alarm(request, id=None):
+    if id:
+        alarm = get_object_or_404(HospitalAlarm, pk=id)
+    else:
+        alarm = HospitalAlarm(user=request.user)
+
+    if request.method == "POST":
+        form = HospitalAlarmForm(request.POST, instance=alarm)
+        if form.is_valid():
+            alarm = form.save(commit=False)
+            alarm.user = request.user
+            alarm.save()
+            return redirect("index")
+    else:
+        form = HospitalAlarmForm(instance=alarm)
+
+    return render(request, "users/hospital_alarm.html", {"form": form})
+
+
+@login_required
 def delete_request(request, menu, id):
     if request.method == "DELETE":
         match menu:
             case "meal":
-                print("deleting diet with id", id)
                 Diet.objects.filter(id=id).delete()
             case "exercise":
                 Exercise.objects.filter(id=id).delete()
@@ -506,21 +586,11 @@ def delete_request(request, menu, id):
                 BloodPressure.objects.filter(id=id).delete()
             case "blood3":
                 HbA1c.objects.filter(id=id).delete()
+            case "pill_alarm":
+                PillAlarm.objects.filter(id=id).delete()
+            case "hospital_alarm":
+                HospitalAlarm.objects.filter(id=id).delete()
             case _:
                 pass
         return JsonResponse({"message": "Deleted successfully."}, status=200)
     return JsonResponse({"error": "Invalid method."}, status=400)
-
-
-def food_detail(request, id):
-    meal = get_object_or_404(Diet, pk=id)
-    meal.result_names_list = meal.result.result_names_comma_separated.split(",")
-    return render(request, "users/food_detail.html", {"meal": meal})
-
-
-def pill_alarm(request):
-    return render(request, "users/pill_alarm.html", {})
-
-
-def hospital_alarm(request):
-    return render(request, "users/hospital_alarm.html", {})
