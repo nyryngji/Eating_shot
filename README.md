@@ -40,7 +40,9 @@
 
 > 시연 영상
 
-https://github.com/user-attachments/assets/ec5d9b70-35a1-402e-855d-7464c3b3ec3f
+https://github.com/user-attachments/assets/bc057fed-cac1-4ad8-baf9-73dabdede8dc
+
+
 
 
 
