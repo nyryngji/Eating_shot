@@ -18,6 +18,11 @@
 - HTML, CSS, JavaScript를 활용한 웹페이지 구현
 <br>
 
+> 핵심 코드
+- AI 모델 데이터 전처리 및 학습 : https://github.com/nyryngji/Eating_shot/blob/main/docs/yolo_model.ipynb
+- 운동 추천 시스템 : https://github.com/nyryngji/Eating_shot/blob/main/docs/reco_exercise.ipynb
+
+<br>
 
 > 실제 구현 이미지 & 프로젝트 구조도
 
